@@ -1,0 +1,23 @@
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+
+# Logs
+*.log
+
+# Temporary files
+*.tmp
+*.bak
+*.swp
+
+# Kubernetes local outputs
+kubeconfig
+*.kubeconfig
+
+# Env files
+.env
+.env.*

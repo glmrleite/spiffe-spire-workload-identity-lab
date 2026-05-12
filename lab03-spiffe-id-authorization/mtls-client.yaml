@@ -1,0 +1,37 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: spiffe-client
+  namespace: spiffe-mtls
+  labels:
+    app: spiffe-client
+spec:
+  serviceAccountName: spiffe-client
+  containers:
+    - name: curl
+      image: curlimages/curl:8.10.1
+      command:
+        - sleep
+        - "3600"
+    - name: envoy
+      image: envoyproxy/envoy:v1.31-latest
+      args:
+        - "-c"
+        - "/etc/envoy/envoy.yaml"
+        - "--log-level"
+        - "info"
+      volumeMounts:
+        - name: envoy-config
+          mountPath: /etc/envoy
+          readOnly: true
+        - name: spire-agent-socket
+          mountPath: /run/spire/sockets
+          readOnly: true
+  volumes:
+    - name: envoy-config
+      configMap:
+        name: envoy-client-config
+    - name: spire-agent-socket
+      csi:
+        driver: "csi.spiffe.io"
+        readOnly: true

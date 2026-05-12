@@ -1,0 +1,50 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: spiffe-server
+  namespace: spiffe-mtls
+spec:
+  selector:
+    app: spiffe-server
+  ports:
+    - name: mtls
+      port: 8443
+      targetPort: 8443
+---
+apiVersion: v1
+kind: Pod
+metadata:
+  name: spiffe-server
+  namespace: spiffe-mtls
+  labels:
+    app: spiffe-server
+spec:
+  serviceAccountName: spiffe-server
+  containers:
+    - name: app
+      image: hashicorp/http-echo:1.0
+      args:
+        - "-listen=:8080"
+        - "-text=Resposta do servidor protegida por mTLS SPIFFE"
+    - name: envoy
+      image: envoyproxy/envoy:v1.31-latest
+      args:
+        - "-c"
+        - "/etc/envoy/envoy.yaml"
+        - "--log-level"
+        - "info"
+      volumeMounts:
+        - name: envoy-config
+          mountPath: /etc/envoy
+          readOnly: true
+        - name: spire-agent-socket
+          mountPath: /run/spire/sockets
+          readOnly: true
+  volumes:
+    - name: envoy-config
+      configMap:
+        name: envoy-server-config
+    - name: spire-agent-socket
+      csi:
+        driver: "csi.spiffe.io"
+        readOnly: true
