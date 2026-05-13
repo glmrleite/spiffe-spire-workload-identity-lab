@@ -1,20 +1,25 @@
-# Lab 02 — Comunicação mTLS com SPIFFE/SPIRE e Envoy
+# 🔒 Lab 02 — Comunicação mTLS com SPIFFE/SPIRE e Envoy
 
-Este lab valida a comunicação **mTLS** entre dois pods usando identidades SPIFFE emitidas pelo SPIRE e o Envoy como sidecar proxy.
+> **Progresso:** [Lab 01](../lab01-svid-basic/README.md) → `Lab 02` → [Lab 03](../lab03-spiffe-id-authorization/README_lab03.md)
 
+Este lab valida a comunicação **mTLS** (mutual TLS — onde tanto o cliente quanto o servidor se autenticam mutuamente apresentando certificados) entre dois pods. Os certificados de ambos os lados são X.509-SVIDs emitidos pelo SPIRE, e o **Envoy sidecar** — um contêiner auxiliar que roda junto à aplicação no mesmo pod — cuida de toda a negociação TLS de forma transparente.
+
+> [!NOTE]
 > Pré-requisito: ter concluído o [Lab 01](../lab01-svid-basic/README.md) e validado que o SPIRE está emitindo SVIDs corretamente.
 
 ---
 
-## 1. Objetivo
+## 1. 🎯 Objetivo
 
-Validar que dois serviços conseguem se comunicar usando **mTLS real**, onde os certificados de ambos os lados são X.509-SVIDs emitidos pelo SPIRE.
+Validar que dois serviços conseguem se comunicar usando **mTLS real**, onde:
 
-O Envoy sidecar intercepta o tráfego e negocia o TLS de forma transparente para a aplicação.
+- Os certificados de ambos os lados são X.509-SVIDs emitidos pelo SPIRE
+- O Envoy sidecar intercepta o tráfego e negocia o TLS de forma transparente para a aplicação
+- A aplicação não precisa saber nada sobre certificados — isso é responsabilidade do Envoy
 
 ---
 
-## 2. Identidades usadas
+## 2. 🪪 Identidades usadas
 
 | Pod | ServiceAccount | SPIFFE ID |
 |-----|---------------|-----------|
@@ -23,7 +28,7 @@ O Envoy sidecar intercepta o tráfego e negocia o TLS de forma transparente para
 
 ---
 
-## 3. Arquitetura
+## 3. 🏗️ Arquitetura
 
 ### Visão geral dos componentes
 
@@ -59,7 +64,9 @@ flowchart TB
 
 ---
 
-### Como o Envoy obtém os certificados (SDS)
+### Como o Envoy obtém os certificados via SDS
+
+O Envoy busca os certificados dinamicamente via **SDS** (Secret Discovery Service — protocolo pelo qual o Envoy solicita segredos, como certificados, diretamente do SPIRE Agent em tempo real).
 
 ```mermaid
 sequenceDiagram
@@ -68,19 +75,19 @@ sequenceDiagram
     participant C as SPIRE Server
 
     Note over E,S: Bootstrap — antes de qualquer requisição
-    E->>S: SDS gRPC — solicita secret "default" (SVID)
+    E->>S: SDS — solicita secret "default" (SVID)
     S->>C: verifica entry registrada para esta workload
     C-->>S: entry válida — emite X.509-SVID
     S-->>E: SVID (cert + key) entregue em memória
 
-    E->>S: SDS gRPC — solicita secret "ROOTCA" (bundle)
+    E->>S: SDS — solicita secret "ROOTCA" (bundle)
     S-->>E: CA bundle para validar peers
 
     Note over E: Envoy pronto para mTLS
     Note over E,S: Renovação automática próxima da expiração
 ```
 
-O Envoy **não lê certificados do disco**. Ele busca o SVID dinamicamente do SPIRE Agent via gRPC pelo socket Unix. Isso significa que certificados são entregues em memória e renovados automaticamente.
+O Envoy **não lê certificados do disco**. Os SVIDs são entregues em memória pelo SPIRE Agent e renovados automaticamente — sem necessidade de reiniciar o pod.
 
 ---
 
@@ -109,7 +116,7 @@ sequenceDiagram
 
 ---
 
-## 5. Arquivos do lab
+## 4. 📁 Arquivos do lab
 
 ```text
 lab02-mtls-envoy/
@@ -121,17 +128,18 @@ lab02-mtls-envoy/
 
 ---
 
-## 6. Pré-requisitos
+## 5. ✅ Pré-requisitos
 
-- Minikube rodando
-- SPIRE instalado e funcionando no namespace `spire`
-- Lab 01 concluído com sucesso
+- [ ] Minikube rodando
+- [ ] SPIRE instalado e funcionando no namespace `spire`
+- [ ] Lab 01 concluído com sucesso
 
 ---
 
-## 7. Registrar as Workload Entries no SPIRE Server
+## 6. 🔑 Registrar as Workload Entries no SPIRE Server
 
-> ⚠️ **Este passo é obrigatório.** Sem o registro, nenhum pod receberá SVID e o mTLS não funcionará.
+> [!IMPORTANT]
+> **Este passo é obrigatório.** Sem o registro, nenhum pod receberá SVID e o mTLS não funcionará.
 
 Obtenha o UID do node:
 
@@ -170,7 +178,7 @@ kubectl exec -n spire spire-server-0 -- \
 
 ---
 
-## 8. Criar namespace e ServiceAccounts
+## 7. 🗂️ Criar namespace e ServiceAccounts
 
 ```bash
 kubectl create namespace spiffe-mtls
@@ -181,7 +189,7 @@ kubectl create serviceaccount spiffe-server -n spiffe-mtls
 
 ---
 
-## 9. Aplicar os manifests
+## 8. ▶️ Aplicar os manifests
 
 ```bash
 kubectl apply -f lab02-mtls-envoy/envoy-server-config.yaml
@@ -192,7 +200,7 @@ kubectl apply -f lab02-mtls-envoy/mtls-client.yaml
 
 ---
 
-## 10. Validar os pods
+## 9. 🔍 Validar os pods
 
 ```bash
 kubectl get pods -n spiffe-mtls
@@ -206,11 +214,11 @@ spiffe-client   2/2     Running   0          Xs
 spiffe-server   2/2     Running   0          Xs
 ```
 
-Cada pod tem 2 containers: a aplicação e o Envoy sidecar.
+> Cada pod tem 2 containers: a aplicação e o Envoy sidecar.
 
 ---
 
-## 11. Testar a comunicação mTLS
+## 10. 🧪 Testar a comunicação mTLS
 
 ```bash
 kubectl exec -it -n spiffe-mtls spiffe-client -c curl -- \
@@ -225,13 +233,13 @@ HTTP/1.1 200 OK
 Resposta do servidor protegida por mTLS SPIFFE
 ```
 
-Isso confirma que o mTLS foi estabelecido com sucesso usando identidades SPIFFE.
+> Isso confirma que o mTLS foi estabelecido com sucesso usando identidades SPIFFE.
 
 ---
 
-## 12. Debug com o Envoy Admin (porta 9901)
+## 11. 🛠️ Debug com o Envoy Admin (porta 9901)
 
-O Envoy expõe uma interface de administração em `127.0.0.1:9901` dentro de cada pod.
+O Envoy expõe uma interface de administração em `127.0.0.1:9901` dentro de cada pod, útil para inspecionar o estado interno do proxy.
 
 Verificar os certificados ativos no cliente:
 
@@ -256,7 +264,7 @@ kubectl exec -it -n spiffe-mtls spiffe-client -c envoy -- \
 
 ---
 
-## 13. Parar o Lab 02
+## 12. 🛑 Parar o Lab 02
 
 ```bash
 kubectl delete -f lab02-mtls-envoy/mtls-client.yaml
@@ -273,7 +281,7 @@ kubectl delete namespace spiffe-mtls
 
 ---
 
-## 14. Troubleshooting
+## 13. 🔧 Troubleshooting
 
 ### Envoy não sobe: node id e cluster obrigatórios
 
@@ -321,7 +329,7 @@ kubectl exec -n spire spire-server-0 -- \
   /opt/spire/bin/spire-server entry show
 ```
 
-Se as entries de `spiffe-client` e `spiffe-server` não aparecerem, repita o passo 7.
+Se as entries de `spiffe-client` e `spiffe-server` não aparecerem, repita o passo 6.
 
 ### Conversão de path no Git Bash (Windows)
 
@@ -333,10 +341,10 @@ export MSYS_NO_PATHCONV=1
 
 ---
 
-## 15. Próximo lab
+## 14. ➡️ Próximo lab
 
-```text
-lab03-spiffe-id-authorization/
-```
+Após validar o mTLS, siga para:
 
-Nele, o servidor passa a verificar **qual SPIFFE ID está autorizado** a acessar a aplicação, adicionando RBAC sobre o mTLS já estabelecido.
+> [**Lab 03 — Autorização baseada em SPIFFE ID →**](../lab03-spiffe-id-authorization/README_lab03.md)
+
+Nele, o servidor passa a verificar **qual SPIFFE ID está autorizado** a acessar a aplicação, adicionando uma camada de autorização sobre o mTLS já estabelecido.

@@ -1,14 +1,17 @@
-# Lab 03 — Autorização baseada em SPIFFE ID
+# 🛡️ Lab 03 — Autorização baseada em SPIFFE ID
+
+> **Progresso:** [Lab 01](../lab01-svid-basic/README.md) → [Lab 02](../lab02-mtls-envoy/README.md) → `Lab 03`
 
 Este lab evolui o cenário do **Lab 02**, adicionando uma camada de **autorização baseada em identidade SPIFFE**.
 
 No Lab 02, foi validado que dois serviços conseguem se comunicar com mTLS. Neste Lab 03, o servidor passa a verificar **qual SPIFFE ID está autorizado** a acessar a aplicação — separando claramente autenticação de autorização.
 
+> [!NOTE]
 > Pré-requisito: ter concluído o [Lab 02](../lab02-mtls-envoy/README.md).
 
 ---
 
-## 1. Objetivo
+## 1. 🎯 Objetivo
 
 Validar o seguinte cenário:
 
@@ -17,23 +20,21 @@ mTLS autenticado + autorização baseada em SPIFFE ID
 ```
 
 - O cliente precisa apresentar um SVID válido (mTLS)
-- O Envoy Server verifica o SPIFFE ID do cliente via RBAC
+- O Envoy Server verifica o SPIFFE ID do cliente via **RBAC** (Role-Based Access Control — controle de acesso baseado na identidade de quem faz a requisição)
 - Apenas o SPIFFE ID autorizado recebe `200 OK`
 - Qualquer outro SPIFFE ID recebe `403 Forbidden`, mesmo com SVID válido
 
 ---
 
-## 2. Conceito central: autenticação ≠ autorização
+## 2. 💡 Conceito central: autenticação ≠ autorização
 
-O mTLS estabelece **quem é** a workload — valida a cadeia de confiança do SPIRE e confirma a identidade.
+**Autenticação** responde: _quem é essa workload?_ — O mTLS valida a cadeia de confiança do SPIRE e confirma a identidade.
 
-O RBAC decide **o que ela pode fazer** — mesmo com identidade válida, o acesso pode ser negado.
+**Autorização** responde: _o que essa workload pode fazer?_ — O RBAC decide se o acesso é permitido ou negado, mesmo para identidades válidas.
 
 ### Onde o RBAC acontece
 
-O RBAC é aplicado na **camada HTTP**, não na camada TLS.
-
-Isso significa que:
+O RBAC é aplicado na **camada HTTP**, não na camada TLS. Isso significa que o handshake TLS (a abertura da conexão segura) ocorre com sucesso para qualquer cliente que possua um SVID válido. A decisão de bloquear ou permitir acontece apenas depois, quando a requisição HTTP chega ao filtro RBAC do Envoy.
 
 ```text
 spiffe-client-blocked
@@ -45,11 +46,11 @@ Envoy Server verifica o SPIFFE ID no filtro RBAC (camada HTTP)
 SPIFFE ID não autorizado → HTTP 403 Forbidden
 ```
 
-O cliente bloqueado **consegue abrir a conexão TLS**, mas a requisição HTTP é rejeitada. Esse é o ponto-chave do lab.
+> O cliente bloqueado **consegue abrir a conexão TLS**, mas a requisição HTTP é rejeitada. Esse é o ponto-chave do lab.
 
 ---
 
-## 3. Identidades usadas
+## 3. 🪪 Identidades usadas
 
 | Pod | ServiceAccount | SPIFFE ID | Resultado |
 |-----|---------------|-----------|-----------|
@@ -59,7 +60,7 @@ O cliente bloqueado **consegue abrir a conexão TLS**, mas a requisição HTTP �
 
 ---
 
-## 4. Diagrama de arquitetura
+## 4. 🏗️ Diagrama de arquitetura
 
 ### Visão geral — dois clientes, uma decisão
 
@@ -136,9 +137,9 @@ sequenceDiagram
 
 ---
 
-## 5. Política RBAC aplicada no Envoy Server
+## 5. 📋 Política RBAC aplicada no Envoy Server
 
-O filtro `envoy.filters.http.rbac` no `envoy-server-config.yaml` permite apenas:
+O filtro RBAC no `envoy-server-config.yaml` define uma lista de SPIFFE IDs permitidos. Apenas o SPIFFE ID listado em `principal_name` — o identificador do cliente extraído do certificado mTLS — receberá resposta:
 
 ```text
 spiffe://example.org/ns/spiffe-mtls/sa/spiffe-client
@@ -152,22 +153,22 @@ http_filters:
   typed_config:
     "@type": type.googleapis.com/envoy.extensions.filters.http.rbac.v3.RBAC
     rules:
-      action: ALLOW
+      action: ALLOW          # padrão: negar tudo que não estiver listado
       policies:
         allow_only_spiffe_client:
           permissions:
-          - any: true
+          - any: true         # qualquer rota HTTP
           principals:
           - authenticated:
               principal_name:
                 exact: "spiffe://example.org/ns/spiffe-mtls/sa/spiffe-client"
 ```
 
-Qualquer outro SPIFFE ID não listado na política será bloqueado.
+> Qualquer SPIFFE ID não listado na política será automaticamente bloqueado com `403 Forbidden`.
 
 ---
 
-## 6. Arquivos do lab
+## 6. 📁 Arquivos do lab
 
 ```text
 lab03-spiffe-id-authorization/
@@ -181,18 +182,19 @@ lab03-spiffe-id-authorization/
 
 ---
 
-## 7. Pré-requisitos
+## 7. ✅ Pré-requisitos
 
-- Minikube rodando
-- SPIRE instalado no namespace `spire`
-- Namespace `spiffe-mtls` criado
-- Lab 02 concluído (ou pelo menos compreendido)
+- [ ] Minikube rodando
+- [ ] SPIRE instalado no namespace `spire`
+- [ ] Namespace `spiffe-mtls` criado
+- [ ] Lab 02 concluído (ou pelo menos compreendido)
 
 ---
 
-## 8. Registrar as Workload Entries no SPIRE Server
+## 8. 🔑 Registrar as Workload Entries no SPIRE Server
 
-> ⚠️ **Este passo é obrigatório.** Sem o registro, nenhum pod recebe SVID.
+> [!IMPORTANT]
+> **Este passo é obrigatório.** Sem o registro, nenhum pod recebe SVID.
 
 Obtenha o UID do node:
 
@@ -237,7 +239,7 @@ kubectl exec -n spire spire-server-0 -- \
 
 ---
 
-## 9. Criar ServiceAccounts
+## 9. 🗂️ Criar ServiceAccounts
 
 ```bash
 kubectl create serviceaccount spiffe-client -n spiffe-mtls
@@ -245,11 +247,11 @@ kubectl create serviceaccount spiffe-server -n spiffe-mtls
 kubectl create serviceaccount spiffe-client-blocked -n spiffe-mtls
 ```
 
-Se alguma já existir, o Kubernetes retorna `AlreadyExists` — pode ignorar e seguir.
+> Se alguma já existir, o Kubernetes retorna `AlreadyExists` — pode ignorar e seguir.
 
 ---
 
-## 10. Aplicar os manifests
+## 10. ▶️ Aplicar os manifests
 
 ```bash
 kubectl apply -f lab03-spiffe-id-authorization/envoy-server-config.yaml
@@ -262,7 +264,7 @@ kubectl apply -f lab03-spiffe-id-authorization/mtls-client-blocked.yaml
 
 ---
 
-## 11. Validar os pods
+## 11. 🔍 Validar os pods
 
 ```bash
 kubectl get pods -n spiffe-mtls
@@ -279,7 +281,7 @@ spiffe-server           2/2     Running   0          Xs
 
 ---
 
-## 12. Testar o cliente autorizado
+## 12. 🧪 Testar o cliente autorizado
 
 ```bash
 kubectl exec -it -n spiffe-mtls spiffe-client -c curl -- \
@@ -296,7 +298,7 @@ Resposta do servidor protegida por mTLS SPIFFE
 
 ---
 
-## 13. Testar o cliente bloqueado
+## 13. 🧪 Testar o cliente bloqueado
 
 ```bash
 kubectl exec -it -n spiffe-mtls spiffe-client-blocked -c curl -- \
@@ -311,11 +313,11 @@ HTTP/1.1 403 Forbidden
 RBAC: access denied
 ```
 
-O cliente bloqueado possui SVID válido e faz o handshake mTLS com sucesso, mas o RBAC do Envoy rejeita a requisição HTTP.
+> O cliente bloqueado possui SVID válido e completa o handshake mTLS com sucesso, mas o filtro RBAC rejeita a requisição HTTP porque seu SPIFFE ID não está na lista de autorizados.
 
 ---
 
-## 14. Inspecionar decisões RBAC nos logs do Envoy Server
+## 14. 🔬 Inspecionar decisões RBAC nos logs do Envoy Server
 
 Para ver em tempo real o que o RBAC está decidindo:
 
@@ -344,7 +346,7 @@ kubectl exec -it -n spiffe-mtls spiffe-server -c envoy -- \
 
 ---
 
-## 15. Como adicionar outro SPIFFE ID autorizado
+## 15. ➕ Como adicionar outro SPIFFE ID autorizado
 
 Para permitir um novo SPIFFE ID, edite `envoy-server-config.yaml` e adicione mais um `principal` na política:
 
@@ -358,7 +360,7 @@ principals:
       exact: "spiffe://example.org/ns/spiffe-mtls/sa/outro-cliente"
 ```
 
-Após editar, reaplicar o ConfigMap e reiniciar o pod do servidor para que o Envoy recarregue a configuração:
+Após editar, reaplicar o ConfigMap (arquivo de configuração do Kubernetes) e reiniciar o pod do servidor para que o Envoy recarregue a configuração:
 
 ```bash
 kubectl apply -f lab03-spiffe-id-authorization/envoy-server-config.yaml
@@ -367,20 +369,18 @@ kubectl delete pod spiffe-server -n spiffe-mtls
 
 ---
 
-## 16. O que foi validado
+## 16. 🏁 O que foi validado
 
-```text
-1. Cliente autorizado possui SPIFFE ID válido
-2. Cliente bloqueado também possui SPIFFE ID válido
-3. Ambos estabelecem o handshake mTLS com sucesso
-4. O Envoy Server aplica RBAC na camada HTTP
-5. Apenas o SPIFFE ID permitido recebe 200 OK
-6. O SPIFFE ID não autorizado recebe 403 Forbidden
-```
+- [x] Cliente autorizado possui SPIFFE ID válido
+- [x] Cliente bloqueado também possui SPIFFE ID válido
+- [x] Ambos completam o handshake mTLS com sucesso
+- [x] O Envoy Server aplica RBAC na camada HTTP
+- [x] Apenas o SPIFFE ID permitido recebe 200 OK
+- [x] O SPIFFE ID não autorizado recebe 403 Forbidden
 
 ---
 
-## 17. Parar o Lab 03
+## 17. 🛑 Parar o Lab 03
 
 ```bash
 kubectl delete -f lab03-spiffe-id-authorization/mtls-client-blocked.yaml
@@ -399,7 +399,7 @@ kubectl delete namespace spiffe-mtls
 
 ---
 
-## 18. Troubleshooting
+## 18. 🔧 Troubleshooting
 
 ### 403 inesperado no cliente autorizado
 
@@ -410,11 +410,11 @@ kubectl exec -n spire spire-server-0 -- \
   /opt/spire/bin/spire-server entry show | grep spiffeID
 ```
 
-Qualquer diferença de caractere no SPIFFE ID causa bloqueio.
+> Qualquer diferença de caractere no SPIFFE ID causa bloqueio.
 
 ### Cliente bloqueado recebe 200 (quando deveria receber 403)
 
-Confirme que o pod `spiffe-client-blocked` está usando o ConfigMap `envoy-client-blocked-config` (não o `envoy-client-config`).
+Confirme que o pod `spiffe-client-blocked` está usando o ConfigMap `envoy-client-blocked-config` (não o `envoy-client-config`):
 
 ```bash
 kubectl describe pod spiffe-client-blocked -n spiffe-mtls | grep envoy-client
@@ -429,11 +429,11 @@ kubectl exec -n spire spire-server-0 -- \
   /opt/spire/bin/spire-server entry show
 ```
 
-As três entries (`spiffe-client`, `spiffe-server`, `spiffe-client-blocked`) devem aparecer.
+> As três entries (`spiffe-client`, `spiffe-server`, `spiffe-client-blocked`) devem aparecer.
 
 ---
 
-## 19. Próximas evoluções
+## 19. 🚀 Próximas evoluções
 
 - Integrar autorização com **OPA** (Open Policy Agent) via Envoy External Authorization
 - Usar **JWT-SVID** para autenticação em APIs REST
