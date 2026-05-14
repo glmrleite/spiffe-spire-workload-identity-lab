@@ -1,6 +1,12 @@
-# 🔐 Workload Identity Lab — SPIFFE/SPIRE
+<p align="center">
+  <img src="./assets/spiffe-logo.png" alt="SPIFFE Logo" width="320">
+</p>
 
-> **Stack:** `SPIRE 1.14.5` &nbsp;·&nbsp; `Envoy v1.31` &nbsp;·&nbsp; `Kubernetes 1.28+` &nbsp;·&nbsp; `Minikube`
+<h1 align="center">🔐 Workload Identity Lab — SPIFFE/SPIRE</h1>
+
+<p align="center">
+  <code>SPIRE 1.14.5</code> &nbsp;·&nbsp; <code>Envoy v1.31</code> &nbsp;·&nbsp; <code>Kubernetes 1.28+</code> &nbsp;·&nbsp; <code>Minikube</code>
+</p>
 
 Laboratório prático e progressivo de identidade de workloads — aplicações e serviços rodando em contêiner — com SPIFFE e SPIRE em Kubernetes local (Minikube).
 
