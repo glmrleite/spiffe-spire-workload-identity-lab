@@ -50,26 +50,41 @@ spiffespire-lab/
 flowchart LR
     subgraph L1["Lab 01 — Identidade"]
         direction TB
-        P1[Pod] -->|Workload API| A1[SPIRE Agent]
+        P1["📦 Pod\naplicação em contêiner"] -->|Workload API| A1["🔐 SPIRE Agent\nagente de identidade local"]
         A1 -->|X.509-SVID| P1
     end
 
     subgraph L2["Lab 02 — mTLS"]
         direction TB
-        C2[curl] -->|HTTP local| EC[Envoy Client]
-        EC -->|mTLS SPIFFE| ES[Envoy Server]
-        ES -->|HTTP local| APP2[http-echo]
+        C2["💻 curl\ncomando de requisição HTTP"] -->|HTTP local| EC["🔀 Envoy Client\nproxy sidecar"]
+        EC -->|mTLS SPIFFE| ES["🔀 Envoy Server\nproxy sidecar"]
+        ES -->|HTTP local| APP2["🖥️ http-echo\naplicação de teste"]
     end
 
     subgraph L3["Lab 03 — Autorização"]
         direction TB
-        OK[spiffe-client] -->|200 OK| RBAC{RBAC}
-        BLK[spiffe-client-blocked] -->|403 Forbidden| RBAC
+        OK["✅ spiffe-client\npod autorizado"] -->|200 OK| RBAC{"🛡️ RBAC\nfiltro de autorização"}
+        BLK["❌ spiffe-client-blocked\npod bloqueado"] -->|403 Forbidden| RBAC
     end
 
     L1 -->|SVID emitido| L2
     L2 -->|mTLS funcionando| L3
 ```
+
+**Legenda:**
+
+| Ícone | Elemento | O que é |
+|-------|----------|---------|
+| 📦 | Pod | Unidade de execução do Kubernetes — onde a aplicação roda |
+| 🔐 | SPIRE Agent | Processo local responsável por emitir e renovar certificados |
+| 💻 | curl | Ferramenta de linha de comando para fazer requisições HTTP |
+| 🔀 | Envoy | Proxy sidecar que intercepta e protege o tráfego de rede |
+| 🖥️ | http-echo | Aplicação de teste que ecoa a requisição recebida |
+| ✅ | spiffe-client | Pod com SPIFFE ID autorizado pela política RBAC |
+| ❌ | spiffe-client-blocked | Pod com SPIFFE ID bloqueado pela política RBAC |
+| 🛡️ | RBAC | Filtro de autorização que decide quem pode acessar o serviço |
+
+---
 
 Esta arquitetura mostra a evolução do laboratório em três etapas.
 

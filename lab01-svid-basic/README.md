@@ -36,10 +36,10 @@ SPIFFE ID: spiffe://example.org/ns/default/sa/default
 
 ```mermaid
 sequenceDiagram
-    participant Pod
-    participant CSI as SPIFFE CSI Driver
-    participant Agent as SPIRE Agent
-    participant Server as SPIRE Server
+    participant Pod as 📦 Pod
+    participant CSI as 🔌 SPIFFE CSI Driver
+    participant Agent as 🔐 SPIRE Agent
+    participant Server as 🏛️ SPIRE Server
 
     Pod->>CSI: solicita volume (csi.spiffe.io)
     CSI-->>Pod: monta socket em /run/spire/sockets/spire-agent.sock
@@ -53,6 +53,15 @@ sequenceDiagram
     Note over Pod: SPIFFE ID recebido:<br/>spiffe://example.org/ns/default/sa/default
     Note over Pod: Válido por 1 hora — renovado automaticamente
 ```
+
+**Legenda:**
+
+| Ícone | Elemento | O que é |
+|-------|----------|---------|
+| 📦 | Pod | Unidade de execução do Kubernetes onde a aplicação roda |
+| 🔌 | SPIFFE CSI Driver | Responsável por montar o socket SPIFFE dentro do pod |
+| 🔐 | SPIRE Agent | Agente local que valida a workload e entrega o certificado |
+| 🏛️ | SPIRE Server | Autoridade central que assina os certificados (CA) |
 
 ---
 

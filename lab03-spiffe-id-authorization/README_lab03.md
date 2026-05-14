@@ -67,19 +67,19 @@ SPIFFE ID não autorizado → HTTP 403 Forbidden
 ```mermaid
 flowchart TD
     subgraph spire["Namespace: spire"]
-        AGENT[SPIRE Agent\nSDS + Workload API]
+        AGENT["🔐 SPIRE Agent\nSDS + Workload API"]
     end
 
     subgraph mtls["Namespace: spiffe-mtls"]
         subgraph allowed["Pod: spiffe-client ✅"]
-            C1[curl] --> EC1[Envoy]
+            C1["💻 curl"] --> EC1["🔀 Envoy"]
         end
         subgraph blocked["Pod: spiffe-client-blocked ❌"]
-            C2[curl] --> EC2[Envoy]
+            C2["💻 curl"] --> EC2["🔀 Envoy"]
         end
         subgraph srv["Pod: spiffe-server"]
-            ES[Envoy\nRBAC filter]
-            APP[http-echo]
+            ES["🔀 Envoy\n🛡️ RBAC filter"]
+            APP["🖥️ http-echo"]
         end
     end
 
@@ -91,7 +91,7 @@ flowchart TD
     EC2 -->|mTLS| ES
 
     ES -->|ALLOW ✅| APP
-    ES -->|DENY ❌ 403| DENY[Bloqueado]
+    ES -->|DENY ❌ 403| DENY["⛔ Bloqueado"]
 
     style allowed fill:#1b4332,color:#fff
     style blocked fill:#6b2737,color:#fff
@@ -104,11 +104,11 @@ flowchart TD
 
 ```mermaid
 sequenceDiagram
-    participant CA as spiffe-client (autorizado)
-    participant CB as spiffe-client-blocked
-    participant ES as Envoy Server
-    participant RBAC as Filtro RBAC
-    participant APP as http-echo
+    participant CA as ✅ spiffe-client
+    participant CB as ❌ spiffe-client-blocked
+    participant ES as 🔀 Envoy Server
+    participant RBAC as 🛡️ Filtro RBAC
+    participant APP as 🖥️ http-echo
 
     Note over CA,ES: Handshake mTLS — cliente autorizado
     CA->>ES: ClientHello + SVID (spiffe-client)
@@ -134,6 +134,19 @@ sequenceDiagram
 ```
 
 > O handshake TLS **tem sucesso nos dois casos**. A rejeição acontece na camada HTTP, pelo filtro RBAC — não pelo TLS.
+
+**Legenda:**
+
+| Ícone | Elemento | O que é |
+|-------|----------|---------|
+| 🔐 | SPIRE Agent | Agente que distribui SVIDs válidos para todos os pods |
+| 💻 | curl | Ferramenta que dispara as requisições de teste |
+| 🔀 | Envoy | Proxy sidecar — no servidor, também executa o filtro RBAC |
+| 🖥️ | http-echo | Aplicação acessada apenas por clientes autorizados |
+| 🛡️ | Filtro RBAC | Componente que avalia e decide quem pode acessar o serviço |
+| ✅ | spiffe-client | Pod com SPIFFE ID presente na política de autorização |
+| ❌ | spiffe-client-blocked | Pod com SPIFFE ID ausente na política de autorização |
+| ⛔ | Bloqueado | Requisição negada com `403 Forbidden` |
 
 ---
 

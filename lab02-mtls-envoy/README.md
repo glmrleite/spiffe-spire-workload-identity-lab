@@ -35,20 +35,20 @@ Validar que dois serviços conseguem se comunicar usando **mTLS real**, onde:
 ```mermaid
 flowchart TB
     subgraph spire["Namespace: spire"]
-        SERVER[SPIRE Server\nCA + registro de entries]
-        AGENT[SPIRE Agent\nWorkload API + SDS]
-        CSI[SPIFFE CSI Driver\nmonta socket nos pods]
+        SERVER["🏛️ SPIRE Server\nCA + registro de entries"]
+        AGENT["🔐 SPIRE Agent\nWorkload API + SDS"]
+        CSI["🔌 SPIFFE CSI Driver\nmonta socket nos pods"]
         SERVER <-->|atestação| AGENT
     end
 
     subgraph mtls["Namespace: spiffe-mtls"]
         subgraph client["Pod: spiffe-client"]
-            CURL[curl]
-            EC[Envoy sidecar\nporta 15001]
+            CURL["💻 curl"]
+            EC["🔀 Envoy sidecar\nporta 15001"]
         end
         subgraph server["Pod: spiffe-server"]
-            ES[Envoy sidecar\nporta 8443]
-            APP[http-echo\nporta 8080]
+            ES["🔀 Envoy sidecar\nporta 8443"]
+            APP["🖥️ http-echo\nporta 8080"]
         end
     end
 
@@ -70,9 +70,9 @@ O Envoy busca os certificados dinamicamente via **SDS** (Secret Discovery Servic
 
 ```mermaid
 sequenceDiagram
-    participant E as Envoy sidecar
-    participant S as SPIRE Agent
-    participant C as SPIRE Server
+    participant E as 🔀 Envoy sidecar
+    participant S as 🔐 SPIRE Agent
+    participant C as 🏛️ SPIRE Server
 
     Note over E,S: Bootstrap — antes de qualquer requisição
     E->>S: SDS — solicita secret "default" (SVID)
@@ -87,6 +87,17 @@ sequenceDiagram
     Note over E,S: Renovação automática próxima da expiração
 ```
 
+**Legenda:**
+
+| Ícone | Elemento | O que é |
+|-------|----------|---------|
+| 🏛️ | SPIRE Server | Autoridade central que assina os certificados (CA) |
+| 🔐 | SPIRE Agent | Agente local que distribui SVIDs via SDS |
+| 🔌 | SPIFFE CSI Driver | Monta o socket SPIFFE dentro de cada pod |
+| 💻 | curl | Ferramenta de linha de comando para requisições HTTP |
+| 🔀 | Envoy | Proxy sidecar que negocia o mTLS entre os pods |
+| 🖥️ | http-echo | Aplicação de teste que responde às requisições |
+
 O Envoy **não lê certificados do disco**. Os SVIDs são entregues em memória pelo SPIRE Agent e renovados automaticamente — sem necessidade de reiniciar o pod.
 
 ---
@@ -95,10 +106,10 @@ O Envoy **não lê certificados do disco**. Os SVIDs são entregues em memória 
 
 ```mermaid
 sequenceDiagram
-    participant curl
-    participant EC as Envoy Client<br/>(127.0.0.1:15001)
-    participant ES as Envoy Server<br/>(0.0.0.0:8443)
-    participant app as http-echo<br/>(127.0.0.1:8080)
+    participant curl as 💻 curl
+    participant EC as 🔀 Envoy Client<br/>(127.0.0.1:15001)
+    participant ES as 🔀 Envoy Server<br/>(0.0.0.0:8443)
+    participant app as 🖥️ http-echo<br/>(127.0.0.1:8080)
 
     curl->>EC: HTTP GET http://127.0.0.1:15001
 
